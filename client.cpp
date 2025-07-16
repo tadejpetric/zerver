@@ -1,11 +1,12 @@
 // client.cpp
 
-#include <iostream>
-#include <cstring>
-#include <cstdlib>
-#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 #include <unistd.h>
+
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
 
 int main() {
     const char* server_ip = "127.0.0.1";  // hardcoded
