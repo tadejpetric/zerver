@@ -1,19 +1,21 @@
 // server.cpp
 
-#include <iostream>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
+#include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
-#include <map>
-#include <algorithm>
-#include <cstring>
-#include <cstdlib>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 
 #include "settings.hpp"
 
+constexpr std::size_t REQUEST_BUFFER_LEN = 1024;
 
 void bind_socket(const prog_settings settings, int socket_fd) {
     // Bind the socket with file descriptor socket_fd
@@ -24,11 +26,7 @@ void bind_socket(const prog_settings settings, int socket_fd) {
         addr4.sin_port = htons(settings.port);
         inet_pton(AF_INET, settings.address.c_str(), &addr4.sin_addr);
         if (bind(socket_fd, (struct sockaddr*)&addr4, sizeof(addr4)) < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(), 
-            "Failed to bind the socket."
-        );
+            throw std::system_error(errno, std::system_category(), "Failed to bind the socket.");
         }
     } else {
         struct sockaddr_in6 addr6{};
@@ -36,11 +34,7 @@ void bind_socket(const prog_settings settings, int socket_fd) {
         addr6.sin6_port = htons(settings.port);
         inet_pton(AF_INET6, settings.address.c_str(), &addr6.sin6_addr);
         if (bind(socket_fd, (struct sockaddr*)&addr6, sizeof(addr6)) < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "Failed to bind the socket."
-        );
+            throw std::system_error(errno, std::system_category(), "Failed to bind the socket.");
         }
     }
 }
@@ -51,34 +45,21 @@ int main(const int argc, const char* argv[]) {
     // Create socket
     int server_fd = socket(settings.in_family, SOCK_STREAM, 0);
     if (server_fd < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "Failed to create a socket."
-        );
+        throw std::system_error(errno, std::system_category(), "Failed to create a socket.");
     }
-
 
     // Allow reuse
     int opt = 1;
-    if(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "Failed to set socket options."
-        );
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        throw std::system_error(errno, std::system_category(), "Failed to set socket options.");
     }
 
     bind_socket(settings, server_fd);
 
     // Listen to the socket
     if (listen(server_fd, 1) < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "Failed to listen to the socket."
-        );
-    } 
+        throw std::system_error(errno, std::system_category(), "Failed to listen to the socket.");
+    }
     std::cout << "Server listening on " << settings.address << ":" << settings.port << "\n";
 
     // Accept one client
@@ -86,22 +67,14 @@ int main(const int argc, const char* argv[]) {
     socklen_t client_len = sizeof(client_addr);
     int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
     if (client_fd < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "Failed to accept the client connection."
-        );
+        throw std::system_error(errno, std::system_category(), "Failed to accept the client connection.");
     }
 
     // Read message
     char buffer[1024];
-    ssize_t n = read(client_fd, buffer, sizeof(buffer)-1);
+    ssize_t n = read(client_fd, buffer, sizeof(buffer) - 1);
     if (n < 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "Failed to read from the socket."
-        );
+        throw std::system_error(errno, std::system_category(), "Failed to read from the socket.");
     } else {
         buffer[n] = '\0';
         std::cout << "Received: " << buffer << "\n";

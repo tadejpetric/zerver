@@ -1,6 +1,6 @@
-#include <string>
-#include <stdexcept>
 #include <optional>
+#include <stdexcept>
+#include <string>
 
 struct prog_settings {
     int in_family;
@@ -8,6 +8,7 @@ struct prog_settings {
     uint16_t port;
 };
 
+namespace {
 struct prog_settings_opt {
     std::optional<int> in_family;
     std::optional<std::string> address;
@@ -15,19 +16,17 @@ struct prog_settings_opt {
 };
 
 // trim from start (in place)
-static inline void ltrim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-        [](unsigned char ch){ return !std::isspace(ch); }));
+static inline void ltrim(std::string& s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
 }
 
 // trim from end (in place)
-static inline void rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(),
-        [](unsigned char ch){ return !std::isspace(ch); }).base(), s.end());
+static inline void rtrim(std::string& s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
 }
 
 // trim from both ends (in place)
-static inline void trim(std::string &s) {
+static inline void trim(std::string& s) {
     ltrim(s);
     rtrim(s);
 }
@@ -37,15 +36,15 @@ void assign_setting_once(const std::string setting_name, std::optional<T>& setti
     if (setting_ref.has_value()) {
         throw std::runtime_error("Setting " + setting_name + " provided multiple times.");
     }
-    
+
     setting_ref = setting_value;
 }
 
 prog_settings all_settings_populated(const prog_settings_opt& settings) {
     return prog_settings{
-        .in_family=settings.in_family.value(),
-        .address=settings.address.value(),
-        .port=settings.port.value()
+        .in_family = settings.in_family.value(),
+        .address = settings.address.value(),
+        .port = settings.port.value(),
     };
 }
 
@@ -66,8 +65,9 @@ void populate_setting(prog_settings_opt& opt_settings, const std::string key, co
         uint16_t port = static_cast<uint16_t>(std::stoi(val));
         assign_setting_once("port", opt_settings.port, port);
     }
-
 }
+
+}  // namespace
 
 prog_settings get_settings(const int argc, const char* argv[]) {
     if (argc != 2) {
@@ -76,16 +76,13 @@ prog_settings get_settings(const int argc, const char* argv[]) {
 
     std::ifstream cfg(argv[1]);
     if (!cfg) {
-        throw std::system_error(
-            errno, // error number reported by ifstream
-            std::system_category(), // POSIX/windows error code conversion
-            "Failed to open config"
-        );
+        throw std::system_error(errno,                   // error number reported by ifstream
+                                std::system_category(),  // POSIX/windows error code conversion
+                                "Failed to open config");
     }
 
-
     prog_settings_opt opt_settings{};
-    
+
     std::string line;
     while (std::getline(cfg, line)) {
         trim(line);
