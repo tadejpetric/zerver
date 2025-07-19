@@ -14,6 +14,7 @@
 #include <string>
 
 #include "settings.hpp"
+#include "request.hpp"
 
 constexpr std::size_t REQUEST_BUFFER_LEN = 1024;
 
@@ -62,25 +63,29 @@ int main(const int argc, const char* argv[]) {
     }
     std::cout << "Server listening on " << settings.address << ":" << settings.port << "\n";
 
-    // Accept one client
     struct sockaddr_storage client_addr;
-    socklen_t client_len = sizeof(client_addr);
-    int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
-    if (client_fd < 0) {
-        throw std::system_error(errno, std::system_category(), "Failed to accept the client connection.");
+    while (true) {
+        // Accept one client
+        socklen_t client_len = sizeof(client_addr);
+        int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
+        if (client_fd < 0) {
+            // TODO: make graceful
+            throw std::system_error(errno, std::system_category(), "Failed to accept the client connection.");
+        }
+
+        std::optional<Request> client_request = read_request(client_fd);
+        // Read message
+        char buffer[1024];
+        ssize_t n = read(client_fd, buffer, sizeof(buffer) - 1);
+        if (n < 0) {
+            throw std::system_error(errno, std::system_category(), "Failed to read from the socket.");
+        } else {
+            buffer[n] = '\0';
+            std::cout << "Received: " << buffer << "\n";
+        }
+        close(client_fd);
     }
 
-    // Read message
-    char buffer[1024];
-    ssize_t n = read(client_fd, buffer, sizeof(buffer) - 1);
-    if (n < 0) {
-        throw std::system_error(errno, std::system_category(), "Failed to read from the socket.");
-    } else {
-        buffer[n] = '\0';
-        std::cout << "Received: " << buffer << "\n";
-    }
-
-    close(client_fd);
     close(server_fd);
     return 0;
 }
